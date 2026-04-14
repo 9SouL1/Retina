@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/attendance_record.dart';
 import '../services/database_service.dart';
+import '../services/user_service.dart';
+import 'package:hive/hive.dart';
 import 'dart:io';
 
 class History extends StatefulWidget {
@@ -38,23 +40,42 @@ class _HistoryState extends State<History> {
             return const Center(child: CircularProgressIndicator(color: Color(0xFFC778FD)));
           }
           final records = snapshot.data ?? [];
-          if (records.isEmpty) {
-            return const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.history, color: Colors.white54, size: 80),
-                  SizedBox(height: 16),
-                  Text(
-                    'No attendance history yet',
-                    style: TextStyle(color: Colors.white54, fontSize: 18),
+if (records.isEmpty) {
+            return FutureBuilder<bool>(
+              future: UserService.isNewUser(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator(color: Color(0xFFC778FD)));
+                }
+                final isNew = snapshot.data ?? false;
+                if (isNew) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) async {
+                    await UserService.completeFirstLogin();
+                    if (mounted) setState(() {});
+                  });
+                }
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.history, color: Colors.white54, size: 80),
+                      SizedBox(height: 16),
+                      Text(
+                        isNew 
+                          ? 'Welcome! Start your first clock-in' 
+                          : 'No attendance history yet',
+                        style: TextStyle(color: Colors.white54, fontSize: 18),
+                      ),
+                      Text(
+                        isNew 
+                          ? 'Your attendance will appear here' 
+                          : 'Clock in from Shift to start',
+                        style: TextStyle(color: Colors.white38, fontSize: 14),
+                      ),
+                    ],
                   ),
-                  Text(
-                    'Clock in from Shift to start',
-                    style: TextStyle(color: Colors.white38, fontSize: 14),
-                  ),
-                ],
-              ),
+                );
+              },
             );
           }
           return ListView.builder(
@@ -102,6 +123,14 @@ class _HistoryState extends State<History> {
                       ),
                       const SizedBox(height: 8),
                       Text(timeStr, style: TextStyle(color: Colors.white54, fontSize: 12)),
+                      IconButton(
+                        icon: const Icon(Icons.delete, color: Colors.red, size: 20),
+                        onPressed: () async {
+                          final box = Hive.box<AttendanceRecord>('attendanceBox');
+                          await box.delete(record.key);
+                          if (mounted) setState(() {});
+                        },
+                      ),
                     ],
                   ),
                 ),

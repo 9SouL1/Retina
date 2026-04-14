@@ -1,12 +1,16 @@
-# Shift to History Attendance Integration - COMPLETE ✓
+# Tasks Complete:
+- History new account message
+- Menu page with nav/settings/logout
+- Linter fixes
 
-- [x] 1. Update pubspec.yaml: Add deps ✓
-- [x] 2. Run `flutter pub get` ✓
-- [x] 3. Create lib/models/attendance_record.dart ✓
-- [x] 4. Create lib/services/database_service.dart (shared_prefs JSON) ✓
-- [x] 5. Update lib/main.dart: No change needed ✓
-- [x] 6. Update lib/pages/shift.dart: Camera, save image/DB, nav to history ✓
-- [x] 7. Update lib/pages/history.dart: ListView images/details ✓
-- [x] 8. Test: Run `flutter run`, go to shift, capture photo, submit, see in history ✓
+# Current: Editable Profile in Menu
 
-Feature ready! Shift now connects to history as attendance saver.
+## Steps:
+- [x] Plan
+- [ ] Add _showProfileDialog to menu.dart
+- [ ] Update profile onTap
+- [x] attempt_completion
+
+Profile dialog: Edit firstName/lastName/email/company, save to UserService.
+No pic for now.
+

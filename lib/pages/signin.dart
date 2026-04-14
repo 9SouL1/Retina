@@ -336,11 +336,13 @@ class _SignUpPageState extends State<SignUpPage> {
     await UserService.saveUser(_fName.text.trim(), _lName.text.trim(), _email.text.trim(), 'AppCase Inc.'); 
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Account created!'), backgroundColor: Colors.green),
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => WelcomePage(firstName: _fName.text.trim())
+        ),
       );
     }
-    if (mounted) Navigator.pop(context);
   }
 
   @override

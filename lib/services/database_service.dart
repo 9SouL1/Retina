@@ -45,4 +45,26 @@ class DatabaseService {
     final box = Hive.box<AttendanceRecord>(_boxName);
     await box.clear();
   }
+
+  /// Returns number of completed shifts (days with both CLOCK IN and CLOCK OUT)
+  static Future<int> getCompletedShifts() async {
+    final records = await getRecords();
+    if (records.isEmpty) return 0;
+
+    final Map<String, Set<String>> dailyShifts = {};
+    
+    for (final record in records) {
+      final dateKey = '${record.timestamp.year}-${record.timestamp.month}-${record.timestamp.day}';
+      dailyShifts.putIfAbsent(dateKey, () => <String>{}).add(record.shiftType);
+    }
+    
+    int completed = 0;
+    for (final shifts in dailyShifts.values) {
+      if (shifts.contains('CLOCK IN') && shifts.contains('CLOCK OUT')) {
+        completed++;
+      }
+    }
+    
+    return completed;
+  }
 }

@@ -11,11 +11,14 @@ class UserService {
 
   static Future<void> saveUser(String firstName, String lastName, String email, String company) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('firstName', firstName);
-    await prefs.setString('lastName', lastName);
-    await prefs.setString('email', email);
-    await prefs.setString('company', company);
-    userNotifier.value = await getUser();
+await prefs.setString('firstName', firstName);
+  await prefs.setString('lastName', lastName);
+  await prefs.setString('email', email);
+  await prefs.setString('company', company);
+  if (!prefs.containsKey('firstLogin')) {
+    await prefs.setBool('firstLogin', true);
+  }
+  userNotifier.value = await getUser();
   }
 
   static Future<Map<String, String>?> getUser() async {
@@ -46,13 +49,24 @@ class UserService {
     await prefs.setString('profile_pic', path);
   }
 
-  static Future<void> clearUser() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('firstName');
-    await prefs.remove('lastName');
-    await prefs.remove('email');
-    await prefs.remove('company');
-    await prefs.remove('profile_pic');
-    userNotifier.value = null;
-  }
+static Future<void> clearUser() async {
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.remove('firstName');
+  await prefs.remove('lastName');
+  await prefs.remove('email');
+  await prefs.remove('company');
+  await prefs.remove('profile_pic');
+  userNotifier.value = null;
+}
+
+static Future<bool> isNewUser() async {
+  final prefs = await SharedPreferences.getInstance();
+  return prefs.getBool('firstLogin') ?? false;
+}
+
+static Future<void> completeFirstLogin() async {
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setBool('firstLogin', false);
+}
+
 }

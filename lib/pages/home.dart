@@ -265,21 +265,23 @@ class _HomeContentState extends State<_HomeContent> {
         backgroundColor: Colors.black,
         elevation: 0,
         leading: Padding(
-          padding: const EdgeInsets.only(left: 20.0),
-          child: const Text(
-            'RETINA',
-            style: TextStyle(
-              color: Color(0xFFC778FD),
-              fontSize: 28,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 2.0,
-            ),
+          padding: const EdgeInsets.only(left: 8.0),
+          child: Image.asset(
+            'image/Logoretina.png',
+            height: 48,
+            width: 160,
+            fit: BoxFit.contain,
           ),
         ),
+
         actions: [
           IconButton(
             icon: const Icon(Icons.notifications_none, color: Colors.white),
             onPressed: () {},
+          ),
+          IconButton(
+            icon: const Icon(Icons.refresh, color: Colors.white),
+            onPressed: () => setState(() {}),
           ),
           GestureDetector(
             onTap: () => _showProfileDialog(context),
@@ -310,8 +312,18 @@ class _HomeContentState extends State<_HomeContent> {
               },
               child: Row(
                 children: [
-                  _buildGradientText("MORNING, ", 32, brandGradient, isBold: true),
-                  _buildGradientText("DOM", 32, brandGradient, isBold: false),
+                  ValueListenableBuilder<Map<String, String>?>(
+                    valueListenable: UserService.userNotifier,
+                    builder: (context, user, child) {
+                      final firstName = user?['firstName']?.toUpperCase() ?? 'USER';
+                      return Row(
+                        children: [
+                          _buildGradientText("MORNING, ", 32, brandGradient, isBold: true),
+                          _buildGradientText(firstName, 32, brandGradient, isBold: false),
+                        ],
+                      );
+                    },
+                  ),
                 ],
               ),
             ),
@@ -372,44 +384,116 @@ class _HomeContentState extends State<_HomeContent> {
   }
 
   Widget _buildStatsCard(List<Color> brandGradient) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white.withAlpha(25),
-        borderRadius: BorderRadius.circular(40),
-      ),
-      child: Row(
-        children: [
-          Stack(
-            alignment: Alignment.center,
-            children: [
-              SizedBox(
-                height: 100,
-                width: 100,
-                child: CircularProgressIndicator(
-                  value: 0.95,
-                  strokeWidth: 10,
-                  backgroundColor: Colors.white.withAlpha(25),
-                  valueColor: AlwaysStoppedAnimation<Color>(brandGradient[1]),
-                ),
-              ),
-              const Text("95%", style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
-            ],
-          ),
-          const SizedBox(width: 20),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    const int totalShifts = 25;
+    return FutureBuilder<int>(
+      future: DatabaseService.getCompletedShifts(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white.withAlpha(25),
+              borderRadius: BorderRadius.circular(40),
+            ),
+            child: Row(
               children: [
-                Text("Wow! Your Attendance\npercentage is great!", 
-                  style: TextStyle(color: Colors.white, fontSize: 14)),
-                SizedBox(height: 20),
-                Text("It's 14/15 🤯", style: TextStyle(color: Colors.white, fontSize: 14)),
+                SizedBox(
+                  height: 100,
+                  width: 100,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 10,
+                    backgroundColor: Colors.white.withAlpha(25),
+                    valueColor: AlwaysStoppedAnimation<Color>(brandGradient[1]),
+                  ),
+                ),
+                const SizedBox(width: 20),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text("Calculating...", style: TextStyle(color: Colors.white, fontSize: 14)),
+                      SizedBox(height: 20),
+                      Text("Loading...", style: TextStyle(color: Colors.white, fontSize: 14)),
+                    ],
+                  ),
+                ),
               ],
             ),
-          )
-        ],
-      ),
+          );
+        }
+        final int completed = snapshot.data ?? 0;
+        final double percentage = (completed / totalShifts) * 100;
+        final double progressValue = (percentage / 100).clamp(0.0, 1.0);
+        final bool isGreat = percentage >= 70;
+        return Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white.withAlpha(25),
+            borderRadius: BorderRadius.circular(40),
+          ),
+          child: Row(
+            children: [
+              Stack(
+                alignment: Alignment.center,
+                children: [
+                  SizedBox(
+                    height: 100,
+                    width: 100,
+                    child: CircularProgressIndicator(
+                      value: progressValue,
+                      strokeWidth: 10,
+                      backgroundColor: Colors.white.withAlpha(25),
+                      valueColor: AlwaysStoppedAnimation<Color>(brandGradient[1]),
+                    ),
+                  ),
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        completed == 0 ? "0%" : "${percentage.toStringAsFixed(0)}%",
+                        style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        "$completed/$totalShifts",
+                        style: const TextStyle(color: Colors.white70, fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(width: 20),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    RichText(
+                      text: TextSpan(
+                        style: const TextStyle(color: Colors.white, fontSize: 14),
+                        children: [
+                          const TextSpan(text: "Wow your attendance percentage is "),
+                          TextSpan(
+                            text: isGreat ? "great" : "good",
+                            style: TextStyle(
+                              color: isGreat ? Color(0xFFC778FD) : Colors.white70,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const TextSpan(text: "!"),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      "It's $completed/$totalShifts",
+                      style: const TextStyle(color: Colors.white, fontSize: 14),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -429,7 +513,7 @@ class _HomeContentState extends State<_HomeContent> {
           CircleAvatar(
             backgroundImage: FileImage(File(record.imagePath)),
             radius: 25,
-onBackgroundImageError: (_, _) => CircleAvatar(backgroundColor: Colors.white24, radius: 25),
+            backgroundColor: Colors.white24,
           ),
           const SizedBox(width: 15),
           Expanded(
@@ -464,8 +548,8 @@ onBackgroundImageError: (_, _) => CircleAvatar(backgroundColor: Colors.white24, 
           style: TextStyle(
             fontSize: size, 
             fontWeight: isBold ? FontWeight.w900 : FontWeight.normal,
-            fontFamily: isBold ? null : 'Cursive'
           )),
     );
   }
 }
+

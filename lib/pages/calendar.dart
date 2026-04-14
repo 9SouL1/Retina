@@ -43,6 +43,7 @@ class _CalendarState extends State<Calendar> {
         backgroundColor: Colors.black,
         elevation: 0,
         leading: null,
+        automaticallyImplyLeading: false,
         title: _buildGradientTitle(),
       ),
       body: SingleChildScrollView(
