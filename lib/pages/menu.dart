@@ -31,8 +31,7 @@ class _MenuState extends State<Menu> {
     });
   }
 
-Future<void> _showProfileDialog(BuildContext? context) async {
-    if (context == null) return;
+Future<void> _showProfileDialog(BuildContext context) async {
     final user = await UserService.getUser();
     if (user == null) return;
     _firstNameController.text = user['firstName'] ?? '';
@@ -97,13 +96,13 @@ Future<void> _showProfileDialog(BuildContext? context) async {
               onPressed: () => Navigator.of(dialogContext).pop(),
               child: const Text('Cancel'),
             ),
-            ElevatedButton(
+            TextButton(
               onPressed: () async {
                 await UserService.updateUser('firstName', _firstNameController.text);
                 await UserService.updateUser('lastName', _lastNameController.text);
                 await UserService.updateUser('email', _emailController.text);
                 await UserService.updateUser('company', _companyController.text);
-                Navigator.of(dialogContext).pop();
+                if (mounted) Navigator.of(dialogContext).pop();
               },
               child: const Text('Save'),
             ),
@@ -113,8 +112,7 @@ Future<void> _showProfileDialog(BuildContext? context) async {
     );
   }
 
-Future<void> _showSettings(BuildContext? context) async {
-    if (context == null) return;
+Future<void> _showSettings(BuildContext context) async {
     final user = await UserService.getUser();
     _companyController.text = user?['company'] ?? '';
 
@@ -142,13 +140,13 @@ Future<void> _showSettings(BuildContext? context) async {
             onPressed: () => Navigator.of(dialogContext).pop(),
             child: const Text('Cancel'),
           ),
-          TextButton(
-            onPressed: () async {
-              await UserService.updateUser('company', _companyController.text);
-              Navigator.of(dialogContext).pop();
-            },
-            child: const Text('Save'),
-          ),
+            TextButton(
+              onPressed: () async {
+                await UserService.updateUser('company', _companyController.text);
+                if (mounted) Navigator.of(dialogContext).pop();
+              },
+              child: const Text('Save'),
+            ),
         ],
       ),
     );

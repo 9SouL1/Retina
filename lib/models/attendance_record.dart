@@ -21,6 +21,15 @@ class AttendanceRecord extends HiveObject {
   @HiveField(5)
   final String location;
 
+  @HiveField(6)
+  String? status; // Present, Late, Absent
+
+  @HiveField(7)
+  DateTime? outTimestamp;
+
+  @HiveField(8)
+  String? outStatus; // Regular, Overtime, EarlyOut
+
   AttendanceRecord({
     required this.id,
     required this.imagePath,
@@ -28,5 +37,8 @@ class AttendanceRecord extends HiveObject {
     required this.company,
     required this.shiftType,
     required this.location,
+    this.status,
+    this.outTimestamp,
+    this.outStatus,
   });
 }

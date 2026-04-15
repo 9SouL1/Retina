@@ -18,13 +18,16 @@ class Shift extends StatefulWidget {
 
 class _ShiftState extends State<Shift> {
   String _currentTime = "";
-  String _currentLocation = "Getting location...";
+  String _currentLocation = "Requesting location permission...";
   late Timer _timer;
+  StreamSubscription<Position>? _locationSubscription;
+  bool _locationError = false;
   String _selectedShiftType = "CLOCK IN";
   final String _selectedCompany = "AppCase Inc.";
   File? _capturedImage;
   final ImagePicker _picker = ImagePicker();
   bool _isLoading = false;
+  String? _previewStatus;
 
   final List<Color> brandGradient = const [
     Color(0xFF5A7AFF),
@@ -35,19 +38,24 @@ class _ShiftState extends State<Shift> {
   @override
   void initState() {
     super.initState();
-    _loadCurrentLocation();
+    _updatePreviewStatus();
+    _initializeLocation();
     _updateTime();
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (mounted) _updateTime();
+      if (mounted) {
+        _updateTime();
+        _updatePreviewStatus();
+      }
     });
   }
 
-  Future<void> _loadCurrentLocation() async {
+  Future<void> _initializeLocation() async {
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
         setState(() {
           _currentLocation = "Location services disabled";
+          _locationError = true;
         });
         return;
       }
@@ -58,6 +66,7 @@ class _ShiftState extends State<Shift> {
         if (permission == LocationPermission.denied) {
           setState(() {
             _currentLocation = "Location permission denied";
+            _locationError = true;
           });
           return;
         }
@@ -65,29 +74,75 @@ class _ShiftState extends State<Shift> {
 
       if (permission == LocationPermission.deniedForever) {
         setState(() {
-          _currentLocation = "Location permission permanently denied";
+          _currentLocation = "Location permission permanently denied. Please enable in settings.";
+          _locationError = true;
         });
         return;
       }
 
-      Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-      );
-
-      List<Placemark> placemarks = await placemarkFromCoordinates(
-        position.latitude,
-        position.longitude,
-      );
-
-      Placemark place = placemarks[0];
-      setState(() {
-        _currentLocation = "${place.name ?? ''}, ${place.locality}, ${place.administrativeArea}";
-      });
+      _startLocationStream();
     } catch (e) {
+      debugPrint('Shift _initializeLocation error: $e');
       setState(() {
-        _currentLocation = "Unable to get location";
+        _currentLocation = "Unable to initialize location";
+        _locationError = true;
       });
     }
+  }
+
+  void _startLocationStream() {
+    setState(() {
+      _locationError = false;
+      _currentLocation = "Getting location...";
+    });
+
+    const locationSettings = LocationSettings(
+      accuracy: LocationAccuracy.high,
+      distanceFilter: 10,
+    );
+
+    _locationSubscription = Geolocator.getPositionStream(
+      locationSettings: locationSettings,
+    ).listen(
+      (Position position) async {
+        if (!mounted) return;
+        try {
+          List<Placemark> placemarks = await placemarkFromCoordinates(
+            position.latitude,
+            position.longitude,
+          );
+          if (placemarks.isNotEmpty && mounted) {
+            Placemark place = placemarks[0];
+            setState(() {
+              _currentLocation = "${place.name ?? ''}, ${place.locality ?? ''}, ${place.administrativeArea ?? ''}".trim();
+            });
+          }
+        } catch (e) {
+          debugPrint('Shift geocoding error: $e');
+          if (mounted) {
+            setState(() {
+              _currentLocation = "Unable to get address";
+            });
+          }
+        }
+      },
+      onError: (error) {
+        if (mounted) {
+          setState(() {
+            _currentLocation = "Location stream error";
+            _locationError = true;
+          });
+        }
+      },
+    );
+  }
+
+  Future<void> _retryLocation() async {
+    _locationSubscription?.cancel();
+    setState(() {
+      _locationError = false;
+    });
+    await _initializeLocation();
   }
 
   void _updateTime() {
@@ -96,9 +151,21 @@ class _ShiftState extends State<Shift> {
     });
   }
 
+  void _updatePreviewStatus() {
+    final now = DateTime.now();
+    final hour = now.hour;
+    if (_selectedShiftType == 'CLOCK IN') {
+      _previewStatus = hour < 9 ? 'Present' : 'Late';
+    } else {
+      _previewStatus = hour > 18 ? 'Overtime' : (hour < 18 ? 'Early Out' : 'Regular');
+    }
+    if (mounted) setState(() {});
+  }
+
   @override
   void dispose() {
     _timer.cancel();
+    _locationSubscription?.cancel();
     super.dispose();
   }
 
@@ -111,9 +178,10 @@ class _ShiftState extends State<Shift> {
         });
       }
     } catch (e) {
+      debugPrint('Shift capturePhoto error: $e');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to capture photo: $e')),
+        SnackBar(content: Text('Failed to capture photo')),
       );
     }
   }
@@ -149,9 +217,10 @@ class _ShiftState extends State<Shift> {
         );
       }
     } catch (e) {
+      debugPrint('Shift submitAttendance error: $e');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error saving attendance: $e')),
+        const SnackBar(content: Text('Error saving attendance')),
       );
     } finally {
       setState(() {
@@ -175,9 +244,9 @@ class _ShiftState extends State<Shift> {
                     icon: const Icon(Icons.arrow_back, color: Colors.white, size: 28),
                     onPressed: () => Navigator.pop(context),
                   ),
-                  const Text(
-                    "CLOCK IN",
-                    style: TextStyle(
+                  Text(
+                    _selectedShiftType,
+                    style: const TextStyle(
                       color: Color(0xFFC778FD),
                       fontSize: 22,
                       fontWeight: FontWeight.w900,
@@ -252,6 +321,24 @@ class _ShiftState extends State<Shift> {
                     ],
                   ),
                   const SizedBox(height: 8),
+                  if (_locationError)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8.0),
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: _retryLocation,
+                          icon: const Icon(Icons.refresh, color: Colors.white),
+                          label: const Text('Retry Location', style: TextStyle(color: Colors.white)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Color(0xFFC778FD),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                   _buildStatusField(),
                 ],
               ),
@@ -273,7 +360,9 @@ class _ShiftState extends State<Shift> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.transparent,
                     shadowColor: Colors.transparent,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30),
+                    ),
                   ),
                   child: _isLoading
                       ? const SizedBox(
@@ -341,24 +430,39 @@ class _ShiftState extends State<Shift> {
               child: Text(value, style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
             );
           }).toList(),
-          onChanged: (val) => setState(() => _selectedShiftType = val!),
+          onChanged: (val) {
+            setState(() => _selectedShiftType = val!);
+            _updatePreviewStatus();
+          },
         ),
       ),
     );
   }
 
   Widget _buildStatusField() {
-    final status = _capturedImage != null ? "READY TO SUBMIT" : "CAPTURE PHOTO";
+    final readyStatus = _capturedImage != null ? 'READY' : 'CAPTURE PHOTO';
+    final statusColor = _previewStatus == 'Present' || _previewStatus == 'Regular' 
+      ? Colors.green 
+      : (_previewStatus == 'Late' || _previewStatus == 'Early Out' ? Colors.orange : Colors.red);
     return Container(
       height: 35,
-      width: 180,
+      width: double.infinity,
       decoration: BoxDecoration(
         border: Border.all(color: Colors.white, width: 1.5),
       ),
       alignment: Alignment.center,
-      child: Text(
-        "STATUS: $status",
-        style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            '$readyStatus | $_previewStatus',
+            style: TextStyle(
+              color: statusColor,
+              fontSize: 10, 
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
       ),
     );
   }

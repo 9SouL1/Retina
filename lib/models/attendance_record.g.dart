@@ -23,13 +23,16 @@ class AttendanceRecordAdapter extends TypeAdapter<AttendanceRecord> {
       company: fields[3] as String,
       shiftType: fields[4] as String,
       location: fields[5] as String,
+      status: fields[6] as String?,
+      outTimestamp: fields[7] as DateTime?,
+      outStatus: fields[8] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, AttendanceRecord obj) {
     writer
-      ..writeByte(6)
+      ..writeByte(9)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -41,7 +44,13 @@ class AttendanceRecordAdapter extends TypeAdapter<AttendanceRecord> {
       ..writeByte(4)
       ..write(obj.shiftType)
       ..writeByte(5)
-      ..write(obj.location);
+      ..write(obj.location)
+      ..writeByte(6)
+      ..write(obj.status)
+      ..writeByte(7)
+      ..write(obj.outTimestamp)
+      ..writeByte(8)
+      ..write(obj.outStatus);
   }
 
   @override

@@ -25,14 +25,20 @@ class _HomeState extends State<Home> {
     Color(0xFFF2709C),
   ];
 
-  final List<Widget> _pages = [
-    _HomeContent(),
-    History(),
-    Calendar(),
-    Menu(),
-  ];
+late List<Widget> _pages;
 
-  @override
+@override
+  void initState() {
+    super.initState();
+    _pages = [
+      _HomeContent(onSeeAll: () => setState(() => _currentIndex = 1)),
+      const History(),
+      const Calendar(),
+      const Menu(),
+    ];
+  }
+
+@override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
@@ -107,7 +113,8 @@ class _HomeState extends State<Home> {
 }
 
 class _HomeContent extends StatefulWidget {
-  const _HomeContent();
+  final VoidCallback? onSeeAll;
+  const _HomeContent({this.onSeeAll});
 
   @override
   State<_HomeContent> createState() => _HomeContentState();
@@ -336,11 +343,7 @@ class _HomeContentState extends State<_HomeContent> {
                 const Text("ATTENDANCE HISTORY", 
                   style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
                 GestureDetector(
-                  onTap: () {
-                    final homeState = context.findAncestorStateOfType<_HomeState>();
-                    homeState?._currentIndex = 1;
-                    homeState?.setState(() {});
-                  },
+                  onTap: widget.onSeeAll,
                   child: _buildGradientText("SEE ALL", 14, brandGradient, isBold: true),
                 ),
               ],
@@ -522,7 +525,34 @@ class _HomeContentState extends State<_HomeContent> {
               children: [
                 Text(record.location, style: const TextStyle(color: Colors.white, fontSize: 12)),
                 Text(timeStr, style: const TextStyle(color: Colors.white70, fontSize: 12)),
-                Text(record.shiftType, style: TextStyle(color: statusColor, fontSize: 10, fontWeight: FontWeight.bold)),
+                Row(
+                  children: [
+                    Text(record.shiftType, style: TextStyle(color: statusColor, fontSize: 10, fontWeight: FontWeight.bold)),
+                    if (record.status != null) ...[
+                      SizedBox(width: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                        decoration: BoxDecoration(
+                          color: record.status == 'Present' ? Colors.green : Colors.orange,
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                        child: Text(record.status!, style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold)),
+                      ),
+                    ],
+                    if (record.outStatus != null) ...[
+                      SizedBox(width: 2),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                        decoration: BoxDecoration(
+                          color: record.outStatus == 'Regular' ? Colors.green 
+                            : (record.outStatus == 'Overtime' ? Colors.red : Colors.orange),
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                        child: Text(record.outStatus!, style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold)),
+                      ),
+                    ],
+                  ],
+                ),
                 Text(record.company, style: const TextStyle(color: Color(0xFF616161), fontSize: 10)),
               ],
             ),

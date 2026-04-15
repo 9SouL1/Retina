@@ -1,42 +1,10 @@
 import 'package:flutter/material.dart';
-import '../services/user_service.dart';
-import 'home.dart';
 import 'package:flutter/services.dart';
 import 'dart:async';
-
-class UserData {
-  final String firstName;
-  final String lastName;
-  final String email;
-  final String password;
-
-  const UserData({
-    required this.firstName,
-    required this.lastName,
-    required this.email,
-    required this.password,
-  });
-}
-
-List<UserData> registeredUsers = [];
-
-class WelcomeHomePage extends StatelessWidget {
-  const WelcomeHomePage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Scaffold(
-      backgroundColor: Color.fromARGB(255, 2, 2, 2),
-      body: Center(
-        child: Text(
-          "HOME PAGE",
-          style: TextStyle(color: Colors.white, fontSize: 30, fontWeight: FontWeight.bold),
-          textAlign: TextAlign.center,
-        ),
-      ),
-    );
-  }
-}
+import '../services/user_service.dart';
+import '../services/auth_service.dart';
+import '../models/user.dart';
+import 'home.dart';
 
 class WelcomePage extends StatefulWidget {
   final String firstName;
@@ -50,7 +18,7 @@ class _WelcomePageState extends State<WelcomePage> with SingleTickerProviderStat
   late AnimationController _controller;
   late Animation<double> _fadeAnimation;
 
-  static const List<Color> brandGradient = [
+  final List<Color> brandGradient = const [
     Color(0xFF5A7AFF),
     Color(0xFFC778FD),
     Color(0xFFF2709C),
@@ -92,7 +60,7 @@ class _WelcomePageState extends State<WelcomePage> with SingleTickerProviderStat
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              _buildGradientText("Welcome", 90, isScript: true, fontFamily: 'DancingScript'),
+              _buildGradientText("Welcome", 90, isScript: true),
               const SizedBox(height: 10),
               _buildGradientText(widget.firstName.toUpperCase(), 110, isBold: true),
             ],
@@ -102,7 +70,7 @@ class _WelcomePageState extends State<WelcomePage> with SingleTickerProviderStat
     );
   }
 
-  Widget _buildGradientText(String text, double size, {bool isBold = false, bool isScript = false, String? fontFamily}) {
+  Widget _buildGradientText(String text, double size, {bool isBold = false, bool isScript = false}) {
     return ShaderMask(
       blendMode: BlendMode.srcIn,
       shaderCallback: (bounds) => LinearGradient(
@@ -119,14 +87,12 @@ class _WelcomePageState extends State<WelcomePage> with SingleTickerProviderStat
           fontWeight: isBold ? FontWeight.w900 : FontWeight.w200,
           letterSpacing: isBold ? -5.0 : 0,
           height: 0.9,
-          fontFamily: fontFamily,
         ),
       ),
     );
   }
 }
 
-// Rest of signin.dart unchanged...
 class Signin extends StatefulWidget {
   const Signin({super.key});
 
@@ -135,37 +101,40 @@ class Signin extends StatefulWidget {
 }
 
 class _SigninState extends State<Signin> {
-  final TextEditingController _userController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passController = TextEditingController();
-  bool _isLoginPasswordVisible = false;
+  bool _isPasswordVisible = false;
 
-  static const List<Color> brandGradient = [
+  final List<Color> brandGradient = const [
     Color(0xFF5A7AFF),
     Color(0xFFC778FD),
     Color(0xFFF2709C),
   ];
 
   Future<void> _login() async {
-    String inputEmail = _userController.text.trim();
-    String inputPassword = _passController.text.trim();
+    final email = _emailController.text.trim();
+    final password = _passController.text.trim();
 
-    UserData? user;
-    for (final u in registeredUsers) {
-      if (u.email == inputEmail && u.password == inputPassword) {
-        user = u;
-        break;
-      }
+    if (email.isEmpty || password.isEmpty) {
+      _showSnackBar('Please enter email and password', Colors.orange);
+      return;
     }
-    if (user != null) {
-      await UserService.saveUser(user.firstName, user.lastName, user.email, 'AppCase Inc.');
-      if (mounted) {
-        Navigator.push(
-          context,
-MaterialPageRoute(builder: (context) => WelcomePage(firstName: user!.firstName))
-        );
+
+    try {
+      final user = await AuthService.getUser(email, password);
+      if (user != null) {
+        await UserService.saveUser(user.firstName, user.lastName, user.email, 'AppCase Inc.');
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => WelcomePage(firstName: user.firstName)),
+          );
+        }
+      } else {
+        _showSnackBar('Invalid credentials', Colors.red);
       }
-    } else {
-      _showSnackBar('Invalid Email or Password', Colors.red);
+    } catch (e) {
+      _showSnackBar('Login error: $e', Colors.red);
     }
   }
 
@@ -191,20 +160,33 @@ MaterialPageRoute(builder: (context) => WelcomePage(firstName: user!.firstName))
             children: [
               _buildGradientText("LET'S YOU IN", 38),
               const SizedBox(height: 50),
-              _buildTextField("Email", _userController, isNameField: false),
+              _buildTextField("Email", _emailController),
               const SizedBox(height: 20),
-              _buildPasswordField("Password", _passController, _isLoginPasswordVisible, 
-                () => setState(() => _isLoginPasswordVisible = !_isLoginPasswordVisible)),
+              _buildPasswordField("Password", _passController, _isPasswordVisible, 
+                () => setState(() => _isPasswordVisible = !_isPasswordVisible)),
               const SizedBox(height: 40),
               _buildGradientButton("LOGIN", _login, width: 140),
               const SizedBox(height: 40),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Text("Doesn't have account? ", style: TextStyle(color: Colors.white)),
+                  const Text(
+                    "Don't have account? ", 
+                    style: TextStyle(color: Colors.white, fontSize: 14),
+                  ),
                   GestureDetector(
-                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const SignUpPage())),
-                    child: _buildGradientText("Create new", 14),
+                    onTap: () => Navigator.push(
+                      context, 
+                      MaterialPageRoute(builder: (context) => const SignUpPage())
+                    ),
+                    child: const Text(
+                      "Create new",
+                      style: TextStyle(
+                        color: Color(0xFFC778FD),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -219,15 +201,14 @@ MaterialPageRoute(builder: (context) => WelcomePage(firstName: user!.firstName))
     return ShaderMask(
       blendMode: BlendMode.srcIn,
       shaderCallback: (bounds) => LinearGradient(colors: brandGradient).createShader(bounds),
-      child: Text(text, textAlign: TextAlign.center, style: TextStyle(fontSize: size, fontWeight: FontWeight.w900)),
+      child: Text(text, textAlign: TextAlign.center, style: const TextStyle(fontSize: 38, fontWeight: FontWeight.w900)),
     );
   }
 
-  Widget _buildTextField(String hint, TextEditingController controller, {required bool isNameField}) {
+  Widget _buildTextField(String hint, TextEditingController controller) {
     return TextField(
       controller: controller,
       style: const TextStyle(color: Colors.white),
-      inputFormatters: isNameField ? [FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z ]'))] : null,
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: const TextStyle(color: Colors.white60),
@@ -307,7 +288,7 @@ class _SignUpPageState extends State<SignUpPage> {
   bool _isPasswordVisible = false;
   bool _isConfirmPasswordVisible = false;
 
-  static const List<Color> brandGradient = [
+  final List<Color> brandGradient = const [
     Color(0xFF5A7AFF),
     Color(0xFFC778FD),
     Color(0xFFF2709C),
@@ -318,30 +299,37 @@ class _SignUpPageState extends State<SignUpPage> {
   }
 
   Future<void> _createAccount() async {
-    if (_fName.text.trim().isEmpty || _lName.text.trim().isEmpty || !_isValidEmail(_email.text.trim()) || _pass.text.length < 6 || _pass.text != _confirmPass.text) {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please check your fields. Password must be 6+ chars, valid email.'), backgroundColor: Colors.red),
-      );
-    }
-    return;
+    final firstName = _fName.text.trim();
+    final lastName = _lName.text.trim();
+    final email = _email.text.trim();
+    final password = _pass.text.trim();
+    final confirmPass = _confirmPass.text.trim();
+
+    if (firstName.isEmpty || lastName.isEmpty || !_isValidEmail(email) || password.length < 6 || password != confirmPass) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please check your fields. Password must be 6+ chars, valid email.'), backgroundColor: Colors.red),
+        );
+      }
+      return;
     }
 
-    registeredUsers.add(UserData(
-      firstName: _fName.text.trim(),
-      lastName: _lName.text.trim(),
-      email: _email.text.trim(),
-      password: _pass.text.trim(),
-    )); 
-    await UserService.saveUser(_fName.text.trim(), _lName.text.trim(), _email.text.trim(), 'AppCase Inc.'); 
-
-    if (mounted) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => WelcomePage(firstName: _fName.text.trim())
-        ),
-      );
+    try {
+      final user = User(firstName: firstName, lastName: lastName, email: email, password: password);
+      await AuthService.registerUser(user);
+      await UserService.saveUser(firstName, lastName, email, 'AppCase Inc.');
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => WelcomePage(firstName: firstName)),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Registration error: $e'), backgroundColor: Colors.red),
+        );
+      }
     }
   }
 
@@ -376,7 +364,7 @@ class _SignUpPageState extends State<SignUpPage> {
                     ],
                   ),
                   const SizedBox(height: 20),
-                  _buildTextField("Email", _email, isNameField: false),
+                  _buildTextField("Email", _email),
                   const SizedBox(height: 20),
                   _buildPasswordField("Password", _pass, _isPasswordVisible, 
                     () => setState(() => _isPasswordVisible = !_isPasswordVisible)),
@@ -384,7 +372,7 @@ class _SignUpPageState extends State<SignUpPage> {
                   _buildPasswordField("Confirm Password", _confirmPass, _isConfirmPasswordVisible, 
                     () => setState(() => _isConfirmPasswordVisible = !_isConfirmPasswordVisible)),
                   const SizedBox(height: 60),
-                  _buildGradientButton("Create", _createAccount, width: 200),
+                  _buildGradientButton("CREATE", _createAccount, width: 200),
                 ],
               ),
             ),
@@ -398,11 +386,11 @@ class _SignUpPageState extends State<SignUpPage> {
     return ShaderMask(
       blendMode: BlendMode.srcIn,
       shaderCallback: (bounds) => LinearGradient(colors: brandGradient).createShader(bounds),
-      child: Text(text, textAlign: TextAlign.center, style: TextStyle(fontSize: size, fontWeight: FontWeight.w900)),
+      child: Text(text, textAlign: TextAlign.center, style: const TextStyle(fontSize: 45, fontWeight: FontWeight.w900)),
     );
   }
 
-  Widget _buildTextField(String hint, TextEditingController controller, {required bool isNameField}) {
+  Widget _buildTextField(String hint, TextEditingController controller, {bool isNameField = false}) {
     return TextField(
       controller: controller,
       style: const TextStyle(color: Colors.white),
