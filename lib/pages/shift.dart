@@ -7,7 +7,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import '../services/database_service.dart';
-import 'history.dart';
+
 
 class Shift extends StatefulWidget {
   const Shift({super.key});
@@ -211,11 +211,7 @@ class _ShiftState extends State<Shift> {
         location: _currentLocation,
       );
 
-      if (mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const History()),
-        );
-      }
+      Navigator.pop(context);
     } catch (e) {
       debugPrint('Shift submitAttendance error: $e');
       if (!mounted) return;

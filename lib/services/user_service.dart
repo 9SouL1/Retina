@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 
 class UserService {
   static ValueNotifier<Map<String, String>?> userNotifier = ValueNotifier(null);
+  static ValueNotifier<String?> profilePicNotifier = ValueNotifier(null);
+
 
   static Future<void> init() async {
     final user = await getUser();
@@ -39,14 +41,23 @@ await prefs.setString('firstName', firstName);
     userNotifier.value = await getUser();
   }
 
+  static Future<Map<String, String>?> getCurrentUser() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!prefs.containsKey('email')) return null;
+    return await getUser();
+  }
+
   static Future<String?> getProfilePic() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('profile_pic');
+    final pic = prefs.getString('profile_pic');
+    profilePicNotifier.value = pic;
+    return pic;
   }
 
   static Future<void> saveProfilePic(String path) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('profile_pic', path);
+    profilePicNotifier.value = path;
   }
 
 static Future<void> clearUser() async {

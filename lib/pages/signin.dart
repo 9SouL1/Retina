@@ -5,93 +5,8 @@ import '../services/user_service.dart';
 import '../services/auth_service.dart';
 import '../models/user.dart';
 import 'home.dart';
+import 'facialregistration.dart';
 
-class WelcomePage extends StatefulWidget {
-  final String firstName;
-  const WelcomePage({super.key, required this.firstName});
-
-  @override
-  State<WelcomePage> createState() => _WelcomePageState();
-}
-
-class _WelcomePageState extends State<WelcomePage> with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _fadeAnimation;
-
-  final List<Color> brandGradient = const [
-    Color(0xFF5A7AFF),
-    Color(0xFFC778FD),
-    Color(0xFFF2709C),
-  ];
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 5),
-    );
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(_controller);
-    _controller.forward();
-
-    Timer(const Duration(seconds: 6), () {
-      if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const Home()),
-        );
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: FadeTransition(
-        opacity: _fadeAnimation,
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _buildGradientText("Welcome", 90, isScript: true),
-              const SizedBox(height: 10),
-              _buildGradientText(widget.firstName.toUpperCase(), 110, isBold: true),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildGradientText(String text, double size, {bool isBold = false, bool isScript = false}) {
-    return ShaderMask(
-      blendMode: BlendMode.srcIn,
-      shaderCallback: (bounds) => LinearGradient(
-        colors: brandGradient,
-        begin: Alignment.centerLeft,
-        end: Alignment.centerRight,
-      ).createShader(bounds),
-      child: Text(
-        text,
-        textAlign: TextAlign.center,
-        style: TextStyle(
-          fontSize: size,
-          fontStyle: isScript ? FontStyle.italic : FontStyle.normal,
-          fontWeight: isBold ? FontWeight.w900 : FontWeight.w200,
-          letterSpacing: isBold ? -5.0 : 0,
-          height: 0.9,
-        ),
-      ),
-    );
-  }
-}
 
 class Signin extends StatefulWidget {
   const Signin({super.key});
@@ -127,7 +42,7 @@ class _SigninState extends State<Signin> {
         if (mounted) {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (context) => WelcomePage(firstName: user.firstName)),
+            MaterialPageRoute(builder: (context) => const Home()),
           );
         }
       } else {
@@ -318,10 +233,11 @@ class _SignUpPageState extends State<SignUpPage> {
       final user = User(firstName: firstName, lastName: lastName, email: email, password: password);
       await AuthService.registerUser(user);
       await UserService.saveUser(firstName, lastName, email, 'AppCase Inc.');
+      await UserService.completeFirstLogin();
       if (mounted) {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => WelcomePage(firstName: firstName)),
+          MaterialPageRoute(builder: (context) => const Facialregistration()),
         );
       }
     } catch (e) {
@@ -333,7 +249,7 @@ class _SignUpPageState extends State<SignUpPage> {
     }
   }
 
-  @override
+@override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,

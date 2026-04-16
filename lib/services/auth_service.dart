@@ -45,6 +45,19 @@ class AuthService {
     final box = _box;
     return box?.values.toList() ?? [];
   }
+
+  static Future<void> updatePassword(String email, String newPassword) async {
+    final box = _box;
+    if (box == null) throw Exception('AuthService not initialized');
+    
+    final user = box.values.firstWhereOrNull((u) => u.email == email);
+    if (user != null) {
+      user.password = newPassword;
+      await user.save();
+    } else {
+      throw Exception('User not found');
+    }
+  }
 }
 
 extension on Iterable<User> {
